@@ -3,6 +3,8 @@ from langchain_community.utilities import SQLDatabase
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from sqlalchemy import text
+import pandas as pd
 import os
 
 st.set_page_config(
@@ -194,11 +196,16 @@ if question:
             st.markdown("**Generated SQL**")
             st.markdown(f'<div class="sql-box">{sql_query}</div>', unsafe_allow_html=True)
 
-            result = db.run(sql_query)
+            with db._engine.connect() as conn:
+                cursor = conn.execute(text(sql_query))
+                columns = list(cursor.keys())
+                rows = cursor.fetchall()
 
             st.markdown("**Results**")
-            if result:
-                st.success(result)
+            if rows:
+                df = pd.DataFrame(rows, columns=columns)
+                df.index = df.index + 1
+                st.dataframe(df, use_container_width=True)
             else:
                 st.info("No results found for this query.")
 
